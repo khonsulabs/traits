@@ -1,3 +1,4 @@
+use crate::Result;
 use digest::{Digest, ExtendableOutput, Update, XofReader};
 use generic_array::typenum::{IsLessOrEqual, U256};
 use generic_array::{ArrayLength, GenericArray};
@@ -8,9 +9,9 @@ const OVERSIZE_DST_SALT: &[u8] = b"H2C-OVERSIZE-DST-";
 const MAX_DST_LEN: usize = 255;
 
 /// Trait for types implementing expand_message interface for hash_to_field
-pub trait ExpandMsg<L: ArrayLength<u8>> {
+pub trait ExpandMsg {
     /// Expands `msg` to the required number of bytes in `L`
-    fn expand_message(msg: &[u8], dst: &[u8]) -> GenericArray<u8, L>;
+    fn expand_message<const L: u16>(msg: &[u8], dst: &[u8]) -> Result<[u8; L]>;
 }
 
 /// The domain separation tag
@@ -34,7 +35,7 @@ where
 {
     pub fn xof<X>(dst: &'a [u8]) -> Self
     where
-        X: Default + ExtendableOutput + Update,
+        X: Default + ExtendableOutput,
     {
         if dst.len() > MAX_DST_LEN {
             let mut data = GenericArray::<u8, L>::default();
@@ -69,9 +70,16 @@ where
 
     pub fn len(&self) -> u8 {
         match self {
+            // Can't overflow because it's enforced on a type level.
             Self::Hashed(_) => L::to_u8(),
-            // Can't overflow because enforced on a type level.
+            // Can't overflow because it's checked on creation.
             Self::Array(d) => d.len() as u8,
         }
+    }
+
+    #[cfg(test)]
+    pub fn assert(&self, bytes: &[u8]) {
+        assert_eq!(self.data(), &bytes[..bytes.len() - 1]);
+        assert_eq!(self.len(), bytes[bytes.len() - 1]);
     }
 }

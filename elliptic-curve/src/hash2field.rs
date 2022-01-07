@@ -13,20 +13,20 @@ use generic_array::{ArrayLength, GenericArray};
 /// The trait for helping to convert to a scalar
 pub trait FromOkm {
     /// The number of bytes needed to convert to a scalar
-    type Length: ArrayLength<u8>;
+    const Length: u16;
 
     /// Convert a byte sequence into a scalar
-    fn from_okm(data: &GenericArray<u8, Self::Length>) -> Self;
+    fn from_okm(data: &[u8; Self::Length]) -> Self;
 }
 
 /// Convert an arbitrary byte sequence according to
 /// <https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3>
-pub fn hash_to_field<E, T, O: ArrayLength<T>>(data: &[u8], domain: &[u8]) -> GenericArray<T, O>
+pub fn hash_to_field<E, T, const O: u16>(data: &[u8], domain: &[u8]) -> GenericArray<T, O>
 where
-    E: ExpandMsg<Prod<T::Length, O>>,
+    E: ExpandMsg,
     T: FromOkm + Default,
-    T::Length: Mul<O>,
-    Prod<T::Length, O>: ArrayLength<u8>,
+    //T::Length: Mul<O>,
+    //Prod<T::Length, O>: ArrayLength<u8>,
 {
     let uniform_bytes = E::expand_message(data, domain);
 

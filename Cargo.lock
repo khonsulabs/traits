@@ -33,9 +33,9 @@ dependencies = [
 
 [[package]]
 name = "base64ct"
-version = "1.0.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a32fd6af2b5827bce66c29053ba0e7c42b9dcab01835835058558c10851a46b"
+checksum = "a42bc66d2304056cf5b732c24fe578d88871449c6d10aefff27f371e5f927e33"
 
 [[package]]
 name = "blobby"

@@ -2,7 +2,7 @@
 
 use core::ops::{Deref, Mul};
 
-use group::{prime::PrimeCurveAffine, Curve, GroupEncoding};
+use group::{prime::PrimeCurveAffine, Curve, Group, GroupEncoding};
 use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
@@ -10,7 +10,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 use serdect::serde::{de, ser, Deserialize, Serialize};
 use zeroize::Zeroize;
 
-use crate::{CurveArithmetic, NonZeroScalar, Scalar};
+use crate::{ops::MulByGenerator, CurveArithmetic, NonZeroScalar, Scalar};
 
 /// Non-identity point type.
 ///
@@ -71,6 +71,16 @@ where
     pub fn to_affine(self) -> NonIdentity<P::AffineRepr> {
         NonIdentity {
             point: self.point.to_affine(),
+        }
+    }
+
+    /// Multiply by the generator of the prime-order subgroup.
+    pub fn mul_by_generator<C: CurveArithmetic>(scalar: &NonZeroScalar<C>) -> Self
+    where
+        P: Group<Scalar = C::Scalar> + MulByGenerator,
+    {
+        Self {
+            point: P::mul_by_generator(scalar),
         }
     }
 }
@@ -194,7 +204,7 @@ where
     }
 }
 
-impl<P: group::Group> Zeroize for NonIdentity<P> {
+impl<P: Group> Zeroize for NonIdentity<P> {
     fn zeroize(&mut self) {
         self.point = P::generator();
     }
@@ -203,7 +213,7 @@ impl<P: group::Group> Zeroize for NonIdentity<P> {
 #[cfg(all(test, feature = "dev"))]
 mod tests {
     use super::NonIdentity;
-    use crate::dev::{AffinePoint, ProjectivePoint};
+    use crate::dev::{AffinePoint, NonZeroScalar, ProjectivePoint, SecretKey};
     use group::GroupEncoding;
     use hex_literal::hex;
     use zeroize::Zeroize;
@@ -253,5 +263,19 @@ mod tests {
         point.zeroize();
 
         assert_eq!(point.to_point(), ProjectivePoint::Generator);
+    }
+
+    #[test]
+    fn mul_by_generator() {
+        let scalar = NonZeroScalar::from_repr(
+            hex!("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721").into(),
+        )
+        .unwrap();
+        let point = NonIdentity::<ProjectivePoint>::mul_by_generator(&scalar);
+
+        let sk = SecretKey::from(scalar);
+        let pk = sk.public_key();
+
+        assert_eq!(point.to_point(), pk.to_projective());
     }
 }
